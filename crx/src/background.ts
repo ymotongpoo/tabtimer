@@ -13,12 +13,44 @@
 //    limitations under the License.
 
 /// <reference path="../node_modules/@types/chrome/index.d.ts" />
+/// <reference path="../node_modules/@types/node/index.d.ts" />
+/// <reference path="../node_modules/@types/moment/index.d.ts" />
+
+import * as url from 'url';
+import * as moment from 'moment';
 
 chrome.tabs.onActivated.addListener(onTabActivated);
 
+class UserActivity {
+    lastTabId: number;
+    lastAction: moment.Moment;
+    lastUrl: url.Url;
+
+    constructor() {
+        this.lastTabId = 0;
+        this.lastAction = moment(new Date());
+        this.lastUrl = url.parse("undefined");
+    }
+};
+
+let activity = new UserActivity();
+
 function onTabActivated(info: chrome.tabs.TabActiveInfo): void {
+    const lastAction = activity.lastAction;
+
     chrome.tabs.get(info.tabId, (tab) => {
-        const url = tab.url;
-        console.log(`activated: ${url}`);
-    })
+        if (tab.url === 'undefined') {
+            return;
+        }
+        if (activity.lastTabId !== info.tabId) {
+            const date = moment(new Date());
+            const duration = date.diff(activity.lastAction) / 1000;
+            const lastUrl = url.format(activity.lastUrl);
+            console.log(`Last Tab: ${activity.lastTabId} => ${lastUrl} : ${duration}sec`);
+
+            activity.lastTabId = info.tabId;
+            activity.lastAction = date;
+            activity.lastUrl = url.parse(tab.url);
+        }
+    });
 }
